@@ -1,105 +1,135 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from src.simulation import run_simulation
+import src.models as models
+import src.strategies as strategies
 
-months = 10 * 12
-simulations = 10000
+# --------------------------------------
 
-def main():
-    # Parameters
-    initial_mortgage = 4100000  # SEK
-    monthly_cash = 17000  # SEK
+# Parameters
+initial_mortgage = 4100000  # SEK
+exogenous_cash_inflow = 17000  # SEK per month
 
-    # Vasicek Model for interest rates
-    annual_mean_interest_rate = 0.03  # Long-term mean rate
-    interest_rate_volatility = 0.0111  # Annual volatility
-    interest_rate_speed = 0.1  # Speed of reversion
+# Vasicek Model for interest rates
+annual_mean_interest_rate = 0.03  # Long-term mean rate
+interest_rate_volatility = 0.0111  # Annual volatility
+interest_rate_speed = 0.1  # Speed of reversion
 
-    # GBM for stock returns
-    annual_stock_return = 0.08
-    stock_return_volatility = 0.20
+# GBM for stock returns
+annual_stock_return = 0.08
+stock_return_volatility = 0.20
 
- 
-    #number of bins historgram based on sqrt of simulations
-    n_bins = int(np.sqrt(simulations))
+print("Strategy 1: Pay extra towards mortgage")
 
-    # Run the simulation
-    results = run_simulation(
-        initial_mortgage,
-        monthly_cash,
-        annual_mean_interest_rate,
-        interest_rate_volatility,
-        interest_rate_speed,
-        annual_stock_return,
-        stock_return_volatility,
-        months,
-        simulations
-    )
+# Initialize models for Strategy 1
+interest_rate_model1 = models.InterestRateModel(
+    initial_rate=annual_mean_interest_rate,
+    mean_rate=annual_mean_interest_rate,
+    speed_of_reversion=interest_rate_speed,
+    volatility=interest_rate_volatility
+)
 
-    # Unpack results
-    (mortgage_balances_strategy1,
-     mortgage_balances_strategy2,
-     cumulative_paydown_strategy1,
-     final_portfolio_values,
-     total_cash_spent_strategy1,
-     total_cash_spent_strategy2) = results
+stock_model1 = models.StockModel(
+    initial_value=0,
+    expected_return=annual_stock_return,
+    volatility=stock_return_volatility
+)
 
-    # Generate plots
-    generate_plots(
-        mortgage_balances_strategy1,
-        mortgage_balances_strategy2,
-        cumulative_paydown_strategy1,
-        final_portfolio_values,
-        n_bins
-    )
+model1 = models.CashFlowModel(
+    initial_mortgage=initial_mortgage,
+    exogenous_cash_inflow=exogenous_cash_inflow,
+    interest_rate_model=interest_rate_model1,
+    stock_model=stock_model1,
+    initial_cash=0  # Assuming no initial cash
+)
 
-    # Display expected values
-    display_expected_values(
-        mortgage_balances_strategy1,
-        mortgage_balances_strategy2,
-        cumulative_paydown_strategy1,
-        final_portfolio_values
-    )
+strategy1 = strategies.MortgageFocusStrategy()
 
-    # Display total cash spent
-    print('Total cash spent (Strategy 1):', np.mean(total_cash_spent_strategy1))
-    print('Total cash spent (Strategy 2):', np.mean(total_cash_spent_strategy2))
+# Simulate for 12 months
+for month in range(12):
+    model1.simulate_month(strategy1)
 
-def generate_plots(mbs1, mbs2, cps1, fpv, n_bins):
-    # Plot histograms of final mortgage balances
-    plt.figure(figsize=(10, 6))
-    bins = np.linspace(min(np.min(mbs1), np.min(mbs2)), max(np.max(mbs1), np.max(mbs2)), n_bins)
-    plt.hist(mbs1, bins=bins, alpha=0.5, label='Pay Down Mortgage')
-    plt.hist(mbs2, bins=bins, alpha=0.5, label='Invest in Stocks')
-    plt.xlabel('Final Mortgage Balance (SEK)')
-    plt.ylabel('Frequency')
-    plt.legend()
-    plt.title('Expected Mortgage Balances After 5 Years')
-    plt.savefig('plots/mortgage_balances.png')
-    plt.show()
+model1.print_cash_flow_history()
+# plot the cash flow history
+cash_flow_history = model1.cash_flow_history
+months = [cf['month'] for cf in cash_flow_history]
+total_pnl = [cf['total_pnl'] for cf in cash_flow_history]
+interest_payment = [cf['interest_payment'] for cf in cash_flow_history]
+mandatory_down_payment = [cf['mandatory_down_payment'] for cf in cash_flow_history]
+extra_mortgage_payment = [cf['extra_mortgage_payment'] for cf in cash_flow_history]
+investment_investment = [cf['investment_investment'] for cf in cash_flow_history]
+investment_return = [cf['investment_return'] for cf in cash_flow_history]
+# pyplot
+plt.figure(figsize=(12, 6))
+plt.plot(months, total_pnl, label='Total P&L')
+plt.plot(months, interest_payment, label='Interest Payment')
+plt.plot(months, mandatory_down_payment, label='Mandatory Down Payment')
+plt.plot(months, extra_mortgage_payment, label='Extra Mortgage Payment')
+plt.plot(months, investment_investment, label='Investment in Portfolio')
+plt.plot(months, investment_return, label='Investment Return')
+plt.legend()
+plt.xlabel('Months')
+plt.ylabel('Amount (SEK)')
+plt.title('Cash Flow Components Over 12 Months')
+plt.grid(True)
+plt.show()
 
-    # Plot histogram of final portfolio values
-    plt.figure(figsize=(10, 6))
-    bins = np.linspace(min(np.min(cps1), np.min(fpv)), max(np.max(cps1), np.max(fpv)), n_bins)
-    plt.hist(cps1, bins=bins, alpha=0.7, color='blue', label='Pay Down Mortgage')
-    plt.hist(fpv, bins=bins, alpha=0.7, color='green', label='Invest in Stocks')
-    plt.xlabel('Final Portfolio Value (SEK)')
-    plt.ylabel('Frequency')
-    plt.title('Distribution of Final Portfolio Values')
-    plt.legend()
-    plt.savefig('plots/portfolio_values.png')
-    plt.show()
 
-def display_expected_values(mbs1, mbs2, cps1, fpv):
-    mean_balance_strategy1 = np.mean(mbs1)
-    mean_balance_strategy2 = np.mean(mbs2)
-    mean_paydown_strategy1 = np.mean(cps1)
-    mean_portfolio_value = np.mean(fpv)
 
-    print('Expected final mortgage balance (Strategy 1):', mean_balance_strategy1)
-    print('Expected final mortgage balance (Strategy 2):', mean_balance_strategy2)
-    print('Expected total cumulative paydown (Strategy 1):', mean_paydown_strategy1)
-    print('Expected final portfolio value (Strategy 2):', mean_portfolio_value)
+print("\nStrategy 2: Invest in stock market")
 
-if __name__ == '__main__':
-    main()
+# Initialize models for Strategy 2
+interest_rate_model2 = models.InterestRateModel(
+    initial_rate=annual_mean_interest_rate,
+    mean_rate=annual_mean_interest_rate,
+    speed_of_reversion=interest_rate_speed,
+    volatility=interest_rate_volatility
+)
+
+stock_model2 = models.StockModel(
+    initial_value=0,
+    expected_return=annual_stock_return,
+    volatility=stock_return_volatility
+)
+
+model2 = models.CashFlowModel(
+    initial_mortgage=initial_mortgage,
+    exogenous_cash_inflow=exogenous_cash_inflow,
+    interest_rate_model=interest_rate_model2,
+    stock_model=stock_model2,
+    initial_cash=0  # Assuming no initial cash
+)
+
+strategy2 = strategies.InvestmentFocusStrategy()
+
+# Simulate for 12 months
+for month in range(12):
+    model2.simulate_month(strategy2)
+
+model2.print_cash_flow_history()
+# plot the cash flow history
+cash_flow_history = model2.cash_flow_history
+months = [cf['month'] for cf in cash_flow_history]
+total_pnl = [cf['total_pnl'] for cf in cash_flow_history]
+interest_payment = [cf['interest_payment'] for cf in cash_flow_history]
+mandatory_down_payment = [cf['mandatory_down_payment'] for cf in cash_flow_history]
+extra_mortgage_payment = [cf['extra_mortgage_payment'] for cf in cash_flow_history]
+investment_investment = [cf['investment_investment'] for cf in cash_flow_history]
+investment_return = [cf['investment_return'] for cf in cash_flow_history]
+# pyplot
+plt.figure(figsize=(12, 6))
+plt.plot(months, total_pnl, label='Total P&L')
+plt.plot(months, interest_payment, label='Interest Payment')
+plt.plot(months, mandatory_down_payment, label='Mandatory Down Payment')
+plt.plot(months, extra_mortgage_payment, label='Extra Mortgage Payment')
+plt.plot(months, investment_investment, label='Investment in Portfolio')
+plt.plot(months, investment_return, label='Investment Return')
+plt.legend()
+plt.xlabel('Months')
+plt.ylabel('Amount (SEK)')
+plt.title('Cash Flow Components Over 12 Months')
+plt.grid(True)
+plt.show()
+
+# print the final cumulative pnl for each strategy
+print("Strategy 1 Total P&L:", model1.total_equity())
+print("Strategy 2 Total P&L:", model2.total_equity())
