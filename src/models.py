@@ -74,11 +74,13 @@ class StockModel:
 
 class CashFlowModel:
     def __init__(self, initial_mortgage, exogenous_cash_inflow,
-                 interest_rate_model, stock_model, initial_cash=0):
+                 interest_rate_model, stock_model, initial_cash=0, inflation_rate=0.02):
 
         # Parameters
         self.initial_mortgage = initial_mortgage
+        self.base_cash_inflow = exogenous_cash_inflow
         self.exogenous_cash_inflow = exogenous_cash_inflow
+        self.inflation_rate = inflation_rate
 
         # Models
         self.interest_rate_model = interest_rate_model
@@ -122,83 +124,13 @@ class CashFlowModel:
             f"Balance sheet does not balance: Assets ({assets_total}) != Liabilities ({liabilities_total}) + Equity ({equity_total})"
 
     def simulate_month(self, strategy):
-        # Initialize P&L for the period
-        pnl = 0
-
-        # Cash flow dictionary for the current month
-        cash_flows = {
-            'month': self.current_time,
-            'exogenous_cash_inflow': self.exogenous_cash_inflow,
-            'interest_payment': 0,
-            'mandatory_down_payment': 0,
-            'extra_mortgage_payment': 0,
-            'investment_investment': 0,
-            'investment_return': 0,
-            'interest_rate': self.interest_rate_model.current_rate,
-            'total_pnl': 0
-        }
-
-        # 1. Exogenous cash inflow (Income)
-        self.assets['cash'] += self.exogenous_cash_inflow
-        pnl += self.exogenous_cash_inflow
-        cash_flows['exogenous_cash_inflow'] = self.exogenous_cash_inflow
-
-        # 2. Interest rate payment (Expense)
-        interest_payment = self.liabilities['mortgage'] * self.interest_rate_model.current_rate / 12
-        self.assets['cash'] -= interest_payment
-        pnl -= interest_payment
-        cash_flows['interest_payment'] = -interest_payment
-
-        # Now, after paying interest, call strategy to allocate remaining cash
-        allocations = strategy.allocate_cash_flow(self)
-
-        mandatory_down_payment = allocations.get('mandatory_down_payment', 0)
-        extra_mortgage_payment = allocations.get('extra_mortgage_payment', 0)
-        investment_investment = allocations.get('investment_investment', 0)
-
-        cash_flows['mandatory_down_payment'] = mandatory_down_payment
-        cash_flows['extra_mortgage_payment'] = extra_mortgage_payment
-        cash_flows['investment_investment'] = investment_investment
-
-        # Principal repayments (Balance Sheet Movements)
-        total_mortgage_payment = mandatory_down_payment + extra_mortgage_payment
-        self.liabilities['mortgage'] -= total_mortgage_payment
-        self.assets['cash'] -= total_mortgage_payment
-
-        # Investment in portfolio (Asset Transfer)
-        self.assets['cash'] -= investment_investment
-
-        # 3. Simulate the return on the investment portfolio, including the new investment
-        previous_investment_value = self.assets['investment_portfolio']
-        new_investment_value = self.stock_model.simulate_next(delta_t=1/12, investment=investment_investment)
-
-        # Investment return is the growth over the period
-        investment_return = new_investment_value - previous_investment_value - investment_investment
-
-        # Update the investment portfolio value in assets
-        self.assets['investment_portfolio'] = new_investment_value
-        cash_flows['investment_return'] = investment_return
-
-        # Include investment return in P&L
-        pnl += investment_return
-
-        # 4. Update retained earnings after all P&L items
-        self.equity['retained_earnings'] += pnl
-        cash_flows['total_pnl'] = pnl
-
-        # Simulate the interest rate for the next period
-        new_interest_rate = self.interest_rate_model.simulate_next(delta_t=1/12)
-        cash_flows['new_interest_rate'] = new_interest_rate
-
-        # Append the cash flow of the current month to the history
-        self.cash_flow_history.append(cash_flows)
-
-        # Check balance sheet
-        self.check_balance_sheet()
-
-        # Move to the next month
-        self.current_time += 1
-
+        """
+        Placeholder method that should be implemented by subclasses or overridden at instance creation.
+        
+        Parameters:
+            strategy: Strategy object that determines cash flow allocation
+        """
+        raise NotImplementedError("simulate_month must be implemented")
 
     # Method to print the cash flow history
     def print_cash_flow_history(self):
