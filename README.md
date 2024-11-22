@@ -68,4 +68,8 @@ The results, including plots and expected values, will be displayed and saved in
 
 ## Results
 
+![Investment strategy](https://github.com/user-attachments/assets/357c97ae-be46-4bae-9083-772227b093cf)
+![Mortage down payment strategy](https://github.com/user-attachments/assets/8b145b70-e973-485a-bda0-fb10ca751c25)
+
+
 The simulation generates histograms of final mortgage balances and investment portfolio values, along with expected (mean) values for each strategy.
